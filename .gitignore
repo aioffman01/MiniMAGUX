@@ -1,0 +1,13 @@
+# Compiled binary
+backend/collector
+
+# Daemon PID file
+backend/collector.pid
+
+# CSV Log directories
+backend/csv_logs/
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
