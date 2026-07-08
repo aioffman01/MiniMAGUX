@@ -2,15 +2,26 @@ CXX = g++
 CXXFLAGS = -Wall -Wextra -O2 -std=c++17
 LIBS = -lpcap -lmysqlclient
 
-TARGET = collector
+BIN_DIR = bin
+TARGET = $(BIN_DIR)/collector
 SRC = collector.cpp
 
-all: $(TARGET)
+all: $(BIN_DIR) $(TARGET) $(BIN_DIR)/collector.cfg $(BIN_DIR)/setup-dev.backend.sh
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 $(TARGET): $(SRC)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC) $(LIBS)
 
+$(BIN_DIR)/collector.cfg: collector.cfg
+	cp collector.cfg $(BIN_DIR)/
+
+$(BIN_DIR)/setup-dev.backend.sh: setup-dev.backend.sh
+	cp setup-dev.backend.sh $(BIN_DIR)/
+	chmod +x $(BIN_DIR)/setup-dev.backend.sh
+
 clean:
-	rm -f $(TARGET)
+	rm -rf $(BIN_DIR)
 
 .PHONY: all clean

@@ -27,7 +27,7 @@ echo "===================================================="
 echo "[1/3] Syncing files to remote server..."
 # Using rsync if available, otherwise fallback to scp
 if command -v rsync &> /dev/null; then
-    rsync -avz -e "ssh -p $REMOTE_PORT" --exclude='.git' --exclude='backend/collector' --exclude='backend/csv_logs' --exclude='backend/collector.pid' ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
+    rsync -avz -e "ssh -p $REMOTE_PORT" --exclude='.git' --exclude='backend/bin/collector' --exclude='backend/bin/csv_logs' --exclude='backend/bin/collector.pid' --exclude='backend/csv_logs' --exclude='backend/collector.pid' ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 else
     echo "rsync not found. Falling back to scp (this may take longer)..."
     ssh -p $REMOTE_PORT $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR"

@@ -1,11 +1,14 @@
 # Compiled binary
+backend/bin/collector
 backend/collector
 
 # Daemon PID file
+backend/bin/collector.pid
 backend/collector.pid
 
 # CSV Log directories
 backend/csv_logs/
+backend/bin/csv_logs/
 
 # IDE files
 .vscode/

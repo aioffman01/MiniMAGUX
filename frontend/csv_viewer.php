@@ -1,6 +1,6 @@
 <?php
-// Path to the CSV logs directory (sibling to frontend)
-$csv_dir = __DIR__ . '/../backend/csv_logs';
+// Path to the CSV logs directory (inside backend/bin)
+$csv_dir = __DIR__ . '/../backend/bin/csv_logs';
 
 // Determine the active file name for the current hour (e.g., traffic_20260708_22.csv)
 $current_hour_file = 'traffic_' . date('Ymd_H') . '.csv';

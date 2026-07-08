@@ -8,6 +8,7 @@
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
+BIN_DIR="$BACKEND_DIR/bin"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
 echo "===================================================="
@@ -15,20 +16,20 @@ echo " 🔍 Running Traffic Monitor Automated Tests"
 echo "===================================================="
 
 # Check if collector binary exists
-if [ ! -f "$BACKEND_DIR/collector" ]; then
+if [ ! -f "$BIN_DIR/collector" ]; then
     echo "❌ ERROR: Collector binary not found. Please compile it first by running make."
     exit 1
 fi
 
 # 1. Stop any existing running collector
-if [ -f "$BACKEND_DIR/collector.pid" ]; then
+if [ -f "$BIN_DIR/collector.pid" ]; then
     echo "Stopping existing collector instance..."
-    cd "$BACKEND_DIR" && ./collector -kill &>/dev/null
+    cd "$BIN_DIR" && sudo ./collector -kill &>/dev/null
     sleep 2
 fi
 
 # 2. Check if Manticore Search is running and setup index
-CFG_USE_MANTICORE=$(grep -E '^use_manticore' "$BACKEND_DIR/collector.cfg" | cut -d'=' -f2 | tr -d ' \t\r\n')
+CFG_USE_MANTICORE=$(grep -E '^use_manticore' "$BIN_DIR/collector.cfg" | cut -d'=' -f2 | tr -d ' \t\r\n')
 
 if [ "$CFG_USE_MANTICORE" == "true" ]; then
     echo "Checking Manticore Search daemon..."
@@ -77,8 +78,7 @@ fi
 
 # 3. Start collector daemon
 echo "Starting collector daemon..."
-CFG_INTERFACE=$(grep -E '^interface' "$BACKEND_DIR/collector.cfg" | cut -d'=' -f2 | tr -d ' \t\r\n')
-cd "$BACKEND_DIR"
+cd "$BIN_DIR"
 sudo ./collector
 
 sleep 2
@@ -106,7 +106,7 @@ if [ -n "$CSV_FILES" ]; then
         echo "   - $(basename "$f") ($LINE_COUNT lines)"
     done
 else
-    echo "❌ ERROR: No CSV log files were created."
+    echo "❌ ERROR: No CSV log files were created in $BIN_DIR/csv_logs."
 fi
 
 # 6. Verify Manticore Database Ingestion
@@ -122,7 +122,7 @@ fi
 
 # 7. Clean up collector
 echo "Stopping collector daemon..."
-./collector -kill &>/dev/null
+sudo ./collector -kill &>/dev/null
 
 echo "===================================================="
 echo " 🎉 Test execution completed!"
