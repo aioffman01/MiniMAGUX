@@ -117,6 +117,56 @@ void load_config(const std::string& filepath) {
     std::cout << "[Config] Loaded configuration from: " << filepath << std::endl;
 }
 
+// Function to initialize database and create table if not exists dynamically
+void initialize_database() {
+    if (!use_manticore) return;
+
+    MYSQL* mysql = mysql_init(nullptr);
+    if (!mysql) {
+        std::cerr << "[Database] mysql_init failed" << std::endl;
+        return;
+    }
+
+    if (!mysql_real_connect(mysql, manticore_host.c_str(), "root", "", "", manticore_port, nullptr, 0)) {
+        std::cerr << "[Database] Connection to Manticore failed (Dynamic table check skipped): " << mysql_error(mysql) << std::endl;
+        mysql_close(mysql);
+        return;
+    }
+
+    // Dynamic RT index table creation query
+    std::string create_table_query = 
+        "CREATE TABLE IF NOT EXISTS packets ("
+        "timestamp timestamp, "
+        "interface string, "
+        "src_mac string, "
+        "dst_mac string, "
+        "eth_type int, "
+        "ip_ver int, "
+        "src_ip string, "
+        "dst_ip string, "
+        "ip_ttl int, "
+        "ip_proto int, "
+        "src_port int, "
+        "dst_port int, "
+        "tcp_seq bigint, "
+        "tcp_ack bigint, "
+        "tcp_flags string, "
+        "tcp_win int, "
+        "udp_len int, "
+        "icmp_type int, "
+        "icmp_code int, "
+        "payload_len int"
+        ") type='rt'";
+
+    if (mysql_query(mysql, create_table_query.c_str())) {
+        std::cerr << "[Database] Failed to verify/create table 'packets': " << mysql_error(mysql) << std::endl;
+    } else {
+        std::cout << "[Database] Verified 'packets' table dynamically in Manticore Search." << std::endl;
+    }
+
+    mysql_close(mysql);
+}
+
 // Write system and capture statistics (e.g. packet drops) to a log file
 void log_statistics(unsigned int received, unsigned int dropped, unsigned int if_dropped) {
     std::string mkdir_cmd = "mkdir -p " + csv_dir;
@@ -485,6 +535,9 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         target_interface = argv[1];
     }
+
+    // Initialize database dynamically (Auto creates table packets if not exists)
+    initialize_database();
 
     if (daemon(1, 0) < 0) {
         std::cerr << "Failed to daemonize: " << strerror(errno) << std::endl;
