@@ -429,6 +429,9 @@ function getProtoName($num) {
             <div class="modal-body" id="modalBody">
                 <!-- Dynamically populated -->
             </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <a id="viewCsvBtn" href="#" class="btn-submit" style="text-decoration: none; text-align: center; line-height: 17px; display: none;">CSV 파일에서 원본 확인</a>
+            </div>
         </div>
     </div>
 
@@ -439,6 +442,16 @@ function getProtoName($num) {
     <script>
         const modal = document.getElementById('detailModal');
         const modalBody = document.getElementById('modalBody');
+        const viewCsvBtn = document.getElementById('viewCsvBtn');
+
+        function formatTimestampToFilename(ts) {
+            const d = new Date(ts * 1000);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const hh = String(d.getHours()).padStart(2, '0');
+            return `${yyyy}${mm}${dd}_${hh}`;
+        }
 
         function showDetail(packet) {
             let html = '';
@@ -463,7 +476,8 @@ function getProtoName($num) {
                 udp_len: 'UDP 길이',
                 icmp_type: 'ICMP 타입',
                 icmp_code: 'ICMP 코드',
-                payload_len: '페이로드 크기 (Bytes)'
+                payload_len: '페이로드 크기 (Bytes)',
+                csv_line: 'CSV 파일 내 행 번호'
             };
 
             const dateStr = new Date(packet.timestamp * 1000).toLocaleString('ko-KR');
@@ -483,6 +497,16 @@ function getProtoName($num) {
             }
             
             modalBody.innerHTML = html;
+
+            // Setup CSV button link if csv_line is present
+            if (packet.csv_line) {
+                const filename = 'traffic_' + formatTimestampToFilename(packet.timestamp) + '.csv';
+                viewCsvBtn.href = `csv_viewer.php?file=${encodeURIComponent(filename)}&line=${packet.csv_line}`;
+                viewCsvBtn.style.display = 'block';
+            } else {
+                viewCsvBtn.style.display = 'none';
+            }
+
             modal.style.display = 'flex';
         }
 

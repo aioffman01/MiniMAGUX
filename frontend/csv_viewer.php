@@ -20,6 +20,7 @@ if (is_dir($csv_dir)) {
 
 // Check if a specific file is selected for viewing
 $selected_file = $_GET['file'] ?? '';
+$highlight_line = isset($_GET['line']) ? (int)$_GET['line'] : 0;
 $csv_data = [];
 $csv_headers = [];
 $error_msg = '';
@@ -251,6 +252,12 @@ if ($selected_file !== '') {
             border-radius: 8px;
         }
 
+        .highlighted-row {
+            background-color: rgba(59, 130, 246, 0.25) !important;
+            border: 2px solid var(--accent-blue);
+            font-weight: 600;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -368,8 +375,16 @@ if ($selected_file !== '') {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($csv_data as $row): ?>
-                                <tr>
+                            <?php 
+                            $line_counter = 1; // Header is line 1
+                            foreach ($csv_data as $row): 
+                                $line_counter++;
+                                $tr_class = '';
+                                if ($line_counter === $highlight_line) {
+                                    $tr_class = 'class="highlighted-row"';
+                                }
+                            ?>
+                                <tr <?= $tr_class ?>>
                                     <?php foreach ($row as $cell): ?>
                                         <td><?= htmlspecialchars($cell) ?></td>
                                     <?php endforeach; ?>
@@ -389,5 +404,16 @@ if ($selected_file !== '') {
         &copy; 2026 MAGUX. All rights reserved. Rocky Linux Network Monitor.
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const highlightedRow = document.querySelector('.highlighted-row');
+            if (highlightedRow) {
+                // Smooth scroll to the highlighted row to center it in the table-responsive viewport
+                setTimeout(() => {
+                    highlightedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
+        });
+    </script>
 </body>
 </html>

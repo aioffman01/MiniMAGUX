@@ -23,7 +23,7 @@
 #include <signal.h>
 #include <sys/types.h>
 
-// Struct to store packet details (20 fields)
+// Struct to store packet details (21 fields, including csv_line)
 struct PacketRecord {
     long long timestamp;
     std::string interface_name;
@@ -45,6 +45,7 @@ struct PacketRecord {
     unsigned int icmp_type;
     unsigned int icmp_code;
     unsigned int payload_len;
+    unsigned int csv_line; // 21st field: line number in CSV file
 };
 
 // Global configurations (with default values)
@@ -133,7 +134,7 @@ void initialize_database() {
         return;
     }
 
-    // Dynamic RT index table creation query
+    // Dynamic RT index table creation query (with csv_line field)
     std::string create_table_query = 
         "CREATE TABLE IF NOT EXISTS packets ("
         "timestamp timestamp, "
@@ -155,7 +156,8 @@ void initialize_database() {
         "udp_len int, "
         "icmp_type int, "
         "icmp_code int, "
-        "payload_len int"
+        "payload_len int, "
+        "csv_line int"
         ") type='rt'";
 
     if (mysql_query(mysql, create_table_query.c_str())) {
@@ -165,6 +167,51 @@ void initialize_database() {
     }
 
     mysql_close(mysql);
+}
+
+// Helper to count lines of an existing file
+uint32_t count_file_lines(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) return 0;
+    uint32_t lines = 0;
+    std::string line;
+    while (std::getline(file, line)) {
+        lines++;
+    }
+    file.close();
+    return lines;
+}
+
+// Global state trackers for line number assigning
+std::string last_assigned_filename = "";
+uint32_t current_line_offset = 0;
+
+// Function to assign unique CSV line numbers to each record in the batch
+void assign_line_numbers(std::vector<PacketRecord>& records) {
+    if (records.empty()) return;
+
+    // Determine filename for this batch based on the first record's timestamp
+    auto first_ts = records[0].timestamp;
+    std::time_t temp_time = first_ts;
+    std::stringstream ss;
+    ss << csv_dir << "/traffic_" << std::put_time(std::localtime(&temp_time), "%Y%m%d_%H") << ".csv";
+    std::string filename = ss.str();
+
+    // Reset line offset tracker if filename changes (hourly rotation or restart)
+    if (filename != last_assigned_filename) {
+        last_assigned_filename = filename;
+        current_line_offset = count_file_lines(filename);
+    }
+
+    // If file does not exist yet, writing header will occupy line 1, so data starts at line 2.
+    if (current_line_offset == 0) {
+        current_line_offset = 1; // Header line offset
+    }
+
+    for (auto& r : records) {
+        current_line_offset++;
+        r.csv_line = current_line_offset;
+    }
 }
 
 // Write system and capture statistics (e.g. packet drops) to a log file
@@ -186,7 +233,7 @@ void log_statistics(unsigned int received, unsigned int dropped, unsigned int if
          << "Dropped by Kernel: " << dropped << " | "
          << "Dropped by Interface: " << if_dropped << "\n";
     file.flush();
-    file.close();
+         file.close();
 }
 
 // Helper to convert MAC to string
@@ -235,7 +282,7 @@ void write_to_csv(const std::vector<PacketRecord>& records) {
     }
 
     if (!file_has_content) {
-        file << "timestamp,interface,src_mac,dst_mac,eth_type,ip_ver,src_ip,dst_ip,ip_ttl,ip_proto,src_port,dst_port,tcp_seq,tcp_ack,tcp_flags,tcp_win,udp_len,icmp_type,icmp_code,payload_len\n";
+        file << "timestamp,interface,src_mac,dst_mac,eth_type,ip_ver,src_ip,dst_ip,ip_ttl,ip_proto,src_port,dst_port,tcp_seq,tcp_ack,tcp_flags,tcp_win,udp_len,icmp_type,icmp_code,payload_len,csv_line\n";
     }
 
     for (const auto& r : records) {
@@ -258,7 +305,8 @@ void write_to_csv(const std::vector<PacketRecord>& records) {
              << r.udp_len << ","
              << r.icmp_type << ","
              << r.icmp_code << ","
-             << r.payload_len << "\n";
+             << r.payload_len << ","
+             << r.csv_line << "\n";
     }
     file.flush();
     file.close();
@@ -277,7 +325,7 @@ void write_to_manticore(const std::vector<PacketRecord>& records) {
     }
 
     std::stringstream query;
-    query << "INSERT INTO packets (timestamp, interface, src_mac, dst_mac, eth_type, ip_ver, src_ip, dst_ip, ip_ttl, ip_proto, src_port, dst_port, tcp_seq, tcp_ack, tcp_flags, tcp_win, udp_len, icmp_type, icmp_code, payload_len) VALUES ";
+    query << "INSERT INTO packets (timestamp, interface, src_mac, dst_mac, eth_type, ip_ver, src_ip, dst_ip, ip_ttl, ip_proto, src_port, dst_port, tcp_seq, tcp_ack, tcp_flags, tcp_win, udp_len, icmp_type, icmp_code, payload_len, csv_line) VALUES ";
 
     for (size_t i = 0; i < records.size(); ++i) {
         const auto& r = records[i];
@@ -301,7 +349,8 @@ void write_to_manticore(const std::vector<PacketRecord>& records) {
               << r.udp_len << ", "
               << r.icmp_type << ", "
               << r.icmp_code << ", "
-              << r.payload_len << ")";
+              << r.payload_len << ", "
+              << r.csv_line << ")";
         
         if (i + 1 < records.size()) {
             query << ", ";
@@ -334,6 +383,8 @@ void writer_worker() {
         }
 
         if (!records_to_write.empty()) {
+            // Assign CSV Line numbers before sending to outputs
+            assign_line_numbers(records_to_write);
             write_to_csv(records_to_write);
             write_to_manticore(records_to_write);
         }
