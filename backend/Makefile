@@ -4,7 +4,7 @@ LIBS = -lpcap -lmysqlclient
 
 BIN_DIR = bin
 TARGET = $(BIN_DIR)/collector
-SRC = collector.cpp
+SRC = src/collector.cpp
 
 all: $(BIN_DIR) $(TARGET) $(BIN_DIR)/collector.cfg $(BIN_DIR)/setup-dev.backend.sh
 
