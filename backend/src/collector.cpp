@@ -427,9 +427,7 @@ void timer_worker() {
 void packet_handler(u_char* user, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
     if (!keep_running) return;
 
-    PacketRecord record;
-    std::memset(&record, 0, sizeof(record));
-
+    PacketRecord record{};
     record.timestamp = pkthdr->ts.tv_sec;
     record.interface_name = target_interface;
 
@@ -590,8 +588,16 @@ int main(int argc, char* argv[]) {
     // Initialize database dynamically (Auto creates table packets if not exists)
     initialize_database();
 
+    char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_handle = pcap_open_live(target_interface.c_str(), BUFSIZ, 1, 1000, errbuf);
+    if (!pcap_handle) {
+        std::cerr << "Failed to open interface " << target_interface << ": " << errbuf << std::endl;
+        return 1;
+    }
+
     if (daemon(1, 0) < 0) {
         std::cerr << "Failed to daemonize: " << strerror(errno) << std::endl;
+        pcap_close(pcap_handle);
         return 1;
     }
 
@@ -607,13 +613,6 @@ int main(int argc, char* argv[]) {
     sa.sa_flags = 0;
     sigaction(SIGTERM, &sa, nullptr);
     sigaction(SIGINT, &sa, nullptr);
-
-    char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_handle = pcap_open_live(target_interface.c_str(), BUFSIZ, 1, 1000, errbuf);
-    if (!pcap_handle) {
-        unlink(pid_file_path.c_str());
-        return 1;
-    }
 
     // Launch worker threads
     std::thread timer_thread(timer_worker);

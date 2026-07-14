@@ -9,9 +9,9 @@
 # --- [CONFIGURATION] ---
 # Fill in your remote Linux server details
 REMOTE_USER="root"
-REMOTE_HOST="your-remote-linux-ip"
+REMOTE_HOST="192.168.31.154"
 REMOTE_PORT="22"
-REMOTE_DIR="/opt/MiniMAGUX" # Destination directory on remote Linux server
+REMOTE_DIR="/root/MiniMAGUX" # Destination directory on remote Linux server
 
 # Prevent execution without configuration
 if [ "$REMOTE_HOST" == "your-remote-linux-ip" ]; then
